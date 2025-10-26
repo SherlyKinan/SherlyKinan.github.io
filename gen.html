@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generator Gamelist.xml (M15)</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; background-color: #f4f4f4; }
+        h1 { color: #333; }
+        .container { display: flex; gap: 20px; }
+        .box { flex: 1; display: flex; flex-direction: column; }
+        textarea {
+            width: 100%;
+            height: 60vh;
+            font-family: monospace;
+            font-size: 12px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+        button {
+            font-size: 16px;
+            padding: 12px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover { background-color: #0056b3; }
+        label { font-weight: bold; margin-bottom: 5px; }
+        input[type="number"] {
+            padding: 8px;
+            font-size: 14px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            width: 150px;
+        }
+        #outputXml { background-color: #e9e9e9; }
+    </style>
+</head>
+<body>
+
+    <h1>Generator Gamelist.xml (Game Stick M15)</h1>
+    <p>Tempel daftar ROM (seperti dari file <b>aa.txt</b> ) di kotak kiri dan masukkan GameID awal.</p>
+
+    <div>
+        <label for="startId">GameID Awal:</label>
+        <input type="number" id="startId" value="20000">
+        <button onclick="generateXml()">Buat Gamelist!</button>
+    </div>
+
+    <hr style="margin: 20px 0;">
+
+    <div class="container">
+        <div class="box">
+            <label for="fileList">Daftar File ROM (satu file per baris):</label>
+            <textarea id="fileList" placeholder="Contoh:\nSuper Mario Bros.nes\nContra.nes\n..."></textarea>
+        </div>
+        <div class="box">
+            <label for="outputXml">Hasil XML (Siap Salin):</label>
+            <textarea id="outputXml" readonly></textarea>
+        </div>
+    </div>
+
+    <script>
+        function generateXml() {
+            // 1. Ambil semua input
+            const fileListValue = document.getElementById('fileList').value;
+            const startId = parseInt(document.getElementById('startId').value, 10);
+            const outputArea = document.getElementById('outputXml');
+
+            // 2. Validasi input
+            if (!fileListValue.trim()) {
+                outputArea.value = 'ERROR: Kotak "Daftar File ROM" masih kosong.';
+                return;
+            }
+            if (isNaN(startId)) {
+                outputArea.value = 'ERROR: "GameID Awal" harus berupa angka.';
+                return;
+            }
+
+            // 3. Ubah daftar file menjadi array, filter baris kosong
+            const files = fileListValue.split('\n').filter(line => line.trim() !== '');
+            
+            let currentGameId = startId;
+            let xmlContent = '';
+
+            // 4. Loop setiap file dan buat blok <game>
+            files.forEach(fullFilename => {
+                // Hapus ekstensi .nes (case-insensitive)
+                const name = fullFilename.replace(/\.nes$/i, '');
+
+                // Tambahkan blok XML sesuai template M15 Anda
+                xmlContent += `
+<game>
+    <gameid>${currentGameId}</gameid>
+    <path>./${fullFilename}</path>
+    <image>./img.jpg</image>
+    <video_id>9</video_id>
+    <class_type>9</class_type>
+    <game_type>0</game_type>
+    <timer>nes</timer>
+    <en_US>${fullFilename}</en_US>
+    <name>${name}</name>
+</game>
+`;
+                currentGameId++; // Increment ID untuk game berikutnya
+            });
+
+            // 5. Gabungkan semua dan tampilkan di kotak output
+            const finalXml = `<?xml version="1.0"?>\n<gameList>\n${xmlContent}\n</gameList>`;
+            outputArea.value = finalXml;
+        }
+    </script>
+
+</body>
+</html>
