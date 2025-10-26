@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generator Gamelist.xml (M15)</title>
+    <title>Generator Gamelist.xml (Format Padat)</title>
     <style>
         body { font-family: sans-serif; margin: 20px; background-color: #f4f4f4; }
         h1 { color: #333; }
@@ -20,37 +20,58 @@
         }
         button {
             font-size: 16px;
-            padding: 12px;
-            background-color: #28a745; /* Warna hijau untuk download */
+            padding: 12px 20px;
+            background-color: #28a745;
             color: white;
             border: none;
             border-radius: 5px;
             cursor: pointer;
-            margin-top: 10px;
+            margin: 10px 0;
         }
         button:hover { background-color: #218838; }
-        label { font-weight: bold; margin-bottom: 5px; }
-        input[type="number"] {
+        label { font-weight: bold; margin-bottom: 5px; display: inline-block; min-width: 100px; }
+        input[type="number"], input[type="text"] {
             padding: 8px;
             font-size: 14px;
             border: 1px solid #ccc;
             border-radius: 5px;
-            width: 150px;
+            width: 120px;
+            margin-right: 15px;
+        }
+        .config-grid {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 8px;
+            align-items: center;
+            max-width: 500px;
+            margin-bottom: 15px;
         }
         #outputXml { background-color: #e9e9e9; }
     </style>
 </head>
 <body>
 
-    <h1>Generator Gamelist.xml (Game Stick M15)</h1>
-    <p>Tempel daftar ROM (seperti dari file <b>aa.txt</b> ) di kotak kiri dan masukkan GameID awal.</p>
+    <h1>Generator Gamelist.xml (Format Padat)</h1>
+    [cite_start]<p>Tempel daftar ROM (dari file <b>aa.txt</b> [cite: 1-166]) di kotak kiri. Format ini menghilangkan baris kosong ekstra agar kompatibel dengan game stick.</p>
 
-    <div>
+    <div class="config-grid">
         <label for="startId">GameID Awal:</label>
         <input type="number" id="startId" value="20000">
-        
-        <button onclick="generateAndDownloadXml()">Buat & Download Gamelist!</button>
+
+        <label for="videoId">video_id:</label>
+        <input type="number" id="videoId" value="9">
+
+        <label for="classType">class_type:</label>
+        <input type="number" id="classType" value="9">
+
+        <label for="gameType">game_type:</label>
+        <input type="number" id="gameType" value="0">
+
+        <label for="timerValue">timer:</label>
+        <input type="text" id="timerValue" value="nes">
     </div>
+        
+    <button onclick="generateAndDownloadXml()">Buat & Download Gamelist!</button>
 
     <hr style="margin: 20px 0;">
 
@@ -67,10 +88,15 @@
 
     <script>
         function generateAndDownloadXml() {
-            // 1. Ambil semua input
+            // 1. Ambil semua input konfigurasi
             const fileListValue = document.getElementById('fileList').value;
             const startId = parseInt(document.getElementById('startId').value, 10);
             const outputArea = document.getElementById('outputXml');
+
+            const videoId = document.getElementById('videoId').value;
+            const classType = document.getElementById('classType').value;
+            const gameType = document.getElementById('gameType').value;
+            const timerValue = document.getElementById('timerValue').value;
 
             // 2. Validasi input
             if (!fileListValue.trim()) {
@@ -86,53 +112,52 @@
             const files = fileListValue.split('\n').filter(line => line.trim() !== '');
             
             let currentGameId = startId;
-            let xmlContent = '';
+            let xmlContent = []; // Gunakan array untuk join yang lebih bersih
 
             // 4. Loop setiap file dan buat blok <game>
             files.forEach(fullFilename => {
-                // Hapus ekstensi .nes (case-insensitive)
                 const name = fullFilename.replace(/\.nes$/i, '');
 
-                // Tambahkan blok XML sesuai template M15 Anda
-                xmlContent += `
-<game>
+                // --- PERUBAHAN UTAMA DI SINI ---
+                // Buat string untuk satu game, tanpa enter di awal atau akhir
+                const gameBlock = `<game>
     <gameid>${currentGameId}</gameid>
     <path>./${fullFilename}</path>
     <image>./img.jpg</image>
-    <video_id>9</video_id>
-    <class_type>9</class_type>
-    <game_type>0</game_type>
-    <timer>nes</timer>
+    <video_id>${videoId}</video_id>
+    <class_type>${classType}</class_type>
+    <game_type>${gameType}</game_type>
+    <timer>${timerValue}</timer>
     <en_US>${fullFilename}</en_US>
     <name>${name}</name>
-</game>
-`;
-                currentGameId++; // Increment ID untuk game berikutnya
+</game>`;
+                // -------------------------------
+
+                xmlContent.push(gameBlock); // Masukkan ke array
+                currentGameId++;
             });
 
             // 5. Gabungkan semua
-            const finalXml = `<?xml version="1.0"?>\n<gameList>\n${xmlContent}\n</gameList>`;
+            //    Join dengan SATU enter. Ini akan memberi format:
+            //    <game>...</game>
+            //    <game>...</game>
+            const finalXml = `<?xml version="1.0"?>\n<gameList>\n${xmlContent.join('\n')}\n</gameList>`;
             
             // 6. Tampilkan di kotak pratinjau
             outputArea.value = finalXml;
 
-            // --- FUNGSI DOWNLOAD BARU ---
+            // 7. Fungsi Download
             try {
-                // Buat "Blob" (file di dalam memori browser)
                 const blob = new Blob([finalXml], { type: 'application/xml;charset=utf-8' });
-                
-                // Buat link download palsu
                 const a = document.createElement('a');
                 const url = URL.createObjectURL(blob);
                 
                 a.href = url;
-                a.download = 'gamelist.xml'; // Ini nama file yang akan di-download
+                a.download = 'gamelist.xml';
                 
-                // Tambahkan link ke halaman, klik, lalu hapus
                 document.body.appendChild(a);
                 a.click();
                 
-                // Bersihkan
                 setTimeout(() => {
                     document.body.removeChild(a);
                     window.URL.revokeObjectURL(url);  
@@ -141,7 +166,6 @@
             } catch (e) {
                 outputArea.value += "\n\nERROR SAAT MENCOBA DOWNLOAD: " + e.message;
             }
-            // -----------------------------
         }
     </script>
 
